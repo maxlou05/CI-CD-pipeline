@@ -3,16 +3,13 @@
 
 from typing import Any, Dict, List, Optional
 from azure.data.tables import TableServiceClient, TableClient
-import uuid
 import sys
-
-# Default values
-DEFAULT_FILE_PATH = "C:/Users/mlou/Documents/cosmos practice/myTestDB/values.txt"
-DEFAULT_TABLE_NAME = "ncydconfigurationinfo"
-DEFAULT_CONNECTION_STRING = "DefaultEndpointsProtocol=https;AccountName=ncydtabledb;AccountKey=BgxGmRqfcRSU79yTwXFaU8xY20vEcfD9kRpRvoeickozvdqhGutqz0Bq7qNSBpBPGinQLQSr2obU036m1Foq5w==;TableEndpoint=https://ncydtabledb.table.cosmos.azure.com:443/;"
+from azure.identity import DefaultAzureCredential
+import os
+from dotenv import load_dotenv
 
 
-def parse_data(path):
+def parse_file(path):
     out = {}
 
     with open(path, 'r') as file:
@@ -30,10 +27,11 @@ def parse_data(path):
             if(key_value[1][0] == '"' and key_value[1][-1] == '"'):
                 out[key_value[0]] = key_value[1][1:-1]
     
-    # To be determined (these two fields are required, both need to be strings)
-    # PartitionKey + RowKey combination needs to be unique
     out["PartitionKey"] = "pkey"
-    out["RowKey"] = str(uuid.uuid4())
+    try:
+        out["RowKey"] = out["prefix"]
+    except:
+        raise Exception("Please provide a key named \"prefix\" with a unique value")
     
     return out
 
@@ -50,12 +48,12 @@ def upsert_entry(table:TableClient, entry:Dict[str, Any]):
     table.upsert_entity(entry)
 
 
-def delete_entry(table:TableClient, partition_key:str, row_key:str):
-    table.delete_entity(partition_key, row_key)
+def delete_entry(table:TableClient, id:str):
+    table.delete_entity("pkey", id)
 
 
-def get_entry(table:TableClient, partition_key:str, row_key:str):
-    return table.get_entity(partition_key, row_key)
+def get_entry(table:TableClient, id:str):
+    return table.get_entity("pkey", id)
 
 
 def query(table:TableClient, query:Optional[str]=None, fields:Optional[List[str]]=None):
@@ -66,7 +64,7 @@ def query(table:TableClient, query:Optional[str]=None, fields:Optional[List[str]
 
 
 def publish(text_path:str, connection_string:str, table_name:str):
-    entry = parse_data(text_path)
+    entry = parse_file(text_path)
     database = connect_to_db(connection_string)
     table = connect_to_table(database, table_name)
     upsert_entry(table, entry)
@@ -75,16 +73,17 @@ def publish(text_path:str, connection_string:str, table_name:str):
 def run():
     try:
         text_path = sys.argv[1]
-    except:
-        text_path = DEFAULT_FILE_PATH
-    try:
         connection_string = sys.argv[2]
-    except:
-        connection_string = DEFAULT_CONNECTION_STRING
-    try:
         table_name = sys.argv[3]
     except:
-        table_name = DEFAULT_TABLE_NAME
+        try:
+            load_dotenv()
+            text_path = os.environ["FILE_PATH"]
+            connection_string = os.environ["CONNECTION_STRING"]
+            table_name = os.environ["TABLE_NAME"]
+        except:
+            pass
+        raise Exception("Use case: python table_api.py <path to text file> <connection string> <table name>, or provide environment variables or .env file with FILE_PATH, CONNECTION_STRING, and TABLE_NAME")
     
     publish(text_path, connection_string, table_name)
 
