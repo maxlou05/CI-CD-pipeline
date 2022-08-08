@@ -1,4 +1,3 @@
-
 from typing import Any, Dict, List, Optional
 from azure.data.tables import TableServiceClient, TableClient
 import sys
@@ -155,7 +154,7 @@ def query(table:TableClient, query:Optional[str]=None, fields:Optional[List[str]
     - less than or equal to (<=): le
     - not equals (<>): ne
 
-    Exmaple:
+    Example:
     mystring eq 'welcome' and mynumber gt 10
     '''
 
