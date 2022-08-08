@@ -1,12 +1,8 @@
-# REQUIREMENTS
-# For table: pip install azure-data-tables
 
 from typing import Any, Dict, List, Optional
 from azure.data.tables import TableServiceClient, TableClient
 import sys
 import os
-from dotenv import load_dotenv
-
 
 def parse_file(path):
     '''
@@ -184,7 +180,6 @@ def run():
         table_name = sys.argv[3]
     except:
         try:
-            load_dotenv()
             text_path = os.environ["FILE_PATH"]
             connection_string = os.environ["CONNECTION_STRING"]
             table_name = os.environ["TABLE_NAME"]
