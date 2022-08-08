@@ -21,13 +21,13 @@ create-customer-config:
 
 publish-to-db:
  stage: publish-to-db
- extends: [create-customer-config]
+ needs: [create-customer-config]
  before_script:
  - apk update
 # Install python/pip
  - apk add --update --no-cache python3 && ln -sf python3 /usr/bin/python
  - apk add py3-pip
  - python3 -m ensurepip
- - pip install azure-data-tables
+ - pip install -r requirements.txt
  script:
   - python main.py "$TEXT_FILE" "$CONN_STR_DB" "$TABLE_NAME"
