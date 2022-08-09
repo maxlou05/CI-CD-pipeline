@@ -40,7 +40,7 @@ publish-to-db:
 
 clean-up-db:
   stage: clean-up
-  needs: [create-customer-config, publish-to-db]
+  needs: [publish-to-db]
   script:
     - python table_api.py delete "$CONN_STR_DB" "$TABLE_NAME" "$DEPLOY_INFO"
   rules:
