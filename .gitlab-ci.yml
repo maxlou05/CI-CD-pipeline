@@ -1,21 +1,32 @@
 default:
     tags:
         - epsec-gitlab
-
+        
 image: docker-registry-remote.artifactory-fpark1.int.net.nokia.com/hashicorp/terraform:1.2.1
-
+ 
 variables:
  TEXT_FILE: "config_info.txt"
+ PARTITION_KEY: "ak-cicdpk"
+ ROW_KEY: "ak-cicd"
  
 stages:
  - create-customer-config
  - publish-to-db
-
+ - clean-up
+ 
+before_script:
+ - apk update
+# Install python/pip
+ - apk add --update --no-cache python3 && ln -sf python3 /usr/bin/python
+ - apk add py3-pip
+ - python3 -m ensurepip
+ - pip install azure-data-tables
+ 
 create-customer-config:
  stage: create-customer-config
  script:
   - echo 'RowKey = "ak-cicd"' >> "$TEXT_FILE"
-  - echo 'PartitionKey = "ak-cicdpk"' >> "$TEXT_FILE" 
+  - echo 'PartitionKey = "ak-cicdpk"' >> "$TEXT_FILE"
  artifacts:
   paths:
    - "$TEXT_FILE"
@@ -24,12 +35,13 @@ create-customer-config:
 publish-to-db:
  stage: publish-to-db
  needs: [create-customer-config]
- before_script:
-  - apk update
-# Install python/pip
-  - apk add --update --no-cache python3 && ln -sf python3 /usr/bin/python
-  - apk add py3-pip
-  - python3 -m ensurepip
-  - pip install -r requirements.txt
  script:
-  - python table_api.py "$TEXT_FILE" "$CONN_STR_DB" "$TABLE_NAME"
+  - python main.py publish "$TEXT_FILE" "$CONN_STR_DB" "$TABLE_NAME"
+
+clean-up-db:
+ stage: clean-up
+ needs: [publish-to-db]
+ script:
+  - python main.py delete_entry "$CONN_STR_DB" "$TABLE_NAME" "$ROW_KEY" "$PARTITION_KEY"
+ rules:
+  - when: manual
