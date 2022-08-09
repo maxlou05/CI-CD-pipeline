@@ -5,10 +5,10 @@ default:
 image: docker-registry-remote.artifactory-fpark1.int.net.nokia.com/hashicorp/terraform:1.2.1
  
 variables:
-  TEXT_FILE: "config_info.txt"
+  DEPLOY_INFO: "deployment_info.txt"
   PARTITION_KEY: "ak-cicdpk"
   ROW_KEY: "ak-cicd"
- 
+
 stages:
   - create-customer-config
   - publish-to-db
@@ -25,23 +25,23 @@ before_script:
 create-customer-config:
   stage: create-customer-config
   script:
-    - echo 'RowKey = "ak-cicd"' >> "$TEXT_FILE"
-    - echo 'PartitionKey = "ak-cicdpk"' >> "$TEXT_FILE"
+    - echo 'RowKey = "ak-cicd"' >> $DEPLOY_INFO
+    - echo 'PartitionKey = "ak-cicdpk"' >> $DEPLOY_INFO
   artifacts:
     paths:
-      - "$TEXT_FILE"
-  expire_in: 7 days
+      - $DEPLOY_INFO
+    expire_in: 7 days
 
 publish-to-db:
   stage: publish-to-db
   needs: [create-customer-config]
   script:
-    - python table_api.py publish "$CONN_STR_DB" "$TABLE_NAME" "$TEXT_FILE"
+    - python table_api.py publish "$CONN_STR_DB" "$TABLE_NAME" "$DEPLOY_INFO"
 
 clean-up-db:
   stage: clean-up
   needs: [publish-to-db]
   script:
-    - python table_api.py delete_entry "$CONN_STR_DB" "$TABLE_NAME" "$ROW_KEY" "$PARTITION_KEY"
+    - python table_api.py delete "$CONN_STR_DB" "$TABLE_NAME" "$DEPLOY_INFO"
   rules:
     - when: manual

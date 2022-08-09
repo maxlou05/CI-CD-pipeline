@@ -23,9 +23,13 @@ def parse_file(path):
             line = line.replace("\n", "")
 
             # Split into two parts
-            key_value = line.split(" = ")
+            key_value = line.split("=")
 
-            # Strip the extra quatations
+            # Strip leading and trailing whitespace
+            key_value[0] = key_value[0].strip()
+            key_value[1] = key_value[1].strip()
+
+            # Strip the extra quotations
             if(key_value[0][0] == '"' and key_value[0][-1] == '"'):
                 key_value[0] = key_value[0][1:-1]
             if(key_value[1][0] == '"' and key_value[1][-1] == '"'):
@@ -173,11 +177,11 @@ def help():
     Use case: python table_api.py <command>
 
     Available commands:
-        - publish <connection string> <table name> <path to text file>:
-            publish an entry to the database by specifying key-value pairs in a text file
+        - publish <connection string> <table name> <path to text file>
+            publish an entry to the database by specifying key-value pairs with a unique "id" key in a text file
 
-        - delete <connection string> <table name> <id> [*OPTIONAL partition key]:
-            delete an entry from the database by specifying the id
+        - delete <connection string> <table name> <path to text file>
+            delete an entry from the database by specifying key-value pairs with a unique "id" key in a text file
 
         - query <connection string> <table name> [OPTIONS]...
             query the database using a query string and filters the results for only relevant fields
@@ -187,8 +191,8 @@ def help():
             *ex: query <connection string> <table name>
             *ex: query <connection string> <table name> -q query_string -f field1 field2 field3)
 
-        - get <connection string> <table name> <id> [*OPTIONAL partition key]
-            returns a specific entry within the database by specifying the id
+        - get <connection string> <table name> <path to text file>
+            returns a specific entry within the database by specifying key-value pairs with a unique "id" key in a text file
     '''
     return help_text
 
@@ -200,10 +204,11 @@ def cli_publish(connection_string:str, table_name:str, text_path:str):
     upsert_entry(table, entry)
 
 
-def cli_delete(connection_string:str, table_name:str, id:str, partition_key:Optional[str] = None):
+def cli_delete(connection_string:str, table_name:str, text_path:str):
+    keys = parse_file(text_path)
     database = connect_to_db(connection_string)
     table = connect_to_table(database, table_name)
-    delete_entry(table, id, partition_key)
+    delete_entry(table, keys["RowKey"], keys["PartitionKey"])
 
 
 def cli_query(connection_string:str, table_name:str, query_str:Optional[str]=None, fields:Optional[List[str]]=None):
@@ -215,10 +220,11 @@ def cli_query(connection_string:str, table_name:str, query_str:Optional[str]=Non
     return list(query(table, query_str, fields))
 
 
-def cli_get(connection_string:str, table_name:str, id:str, partition_key:Optional[str] = None):
+def cli_get(connection_string:str, table_name:str, text_path:str):
+    keys = parse_file(text_path)
     database = connect_to_db(connection_string)
     table = connect_to_table(database, table_name)
-    return get_entry(table, id, partition_key)
+    return get_entry(table, keys["RowKey"], keys["PartitionKey"])
 
 
 def run():
@@ -247,17 +253,13 @@ def run():
         try:
             connection_string = sys.argv[2]
             table_name = sys.argv[3]
-            id = sys.argv[4]
-            if(len(sys.argv) > 5):
-                partition_key = sys.argv[5]
-            else:
-                partition_key = None
+            text_path = sys.argv[4]
         except:
             print("Invalid format")
-            print("Use case for delete: python table_api.py delete <connection string> <table name> <id> [*OPTIONAL partition key]")
+            print("Use case for delete: python table_api.py delete <connection string> <table name> <path to text file>")
             sys.exit()
         
-        cli_delete(connection_string, table_name, id, partition_key)
+        cli_delete(connection_string, table_name, text_path)
     
     elif(command == "query"):
         try:
@@ -299,17 +301,13 @@ def run():
         try:
             connection_string = sys.argv[2]
             table_name = sys.argv[3]
-            id = sys.argv[4]
-            if(len(sys.argv) > 5):
-                partition_key = sys.argv[5]
-            else:
-                partition_key = None
+            text_path = sys.argv[4]
         except:
             print("Invalid format")
-            print("Use case for get: python table_api.py get <connection string> <table name> <id> [*OPTIONAL partition key]")
+            print("Use case for get: python table_api.py get <connection string> <table name> <path to text file>")
             sys.exit()
         
-        results = cli_get(connection_string, table_name, id, partition_key)
+        results = cli_get(connection_string, table_name, text_path)
         print(json.dumps(results, indent=2))
 
     else:
