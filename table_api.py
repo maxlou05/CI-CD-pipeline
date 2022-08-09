@@ -1,8 +1,7 @@
-
 from typing import Any, Dict, List, Optional
 from azure.data.tables import TableServiceClient, TableClient
 import sys
-import os
+
 
 def parse_file(path):
     '''
@@ -14,6 +13,7 @@ def parse_file(path):
     Return:
     a dictionary with the specified key-value pairs by the text file
     '''
+    
     out = {}
 
     with open(path, 'r') as file:
@@ -60,6 +60,7 @@ def connect_to_db(conn_str:str):
     Return:
     a TableServiceClient which points to the database specified in the connection string
     '''
+
     return TableServiceClient.from_connection_string(conn_str)
 
 
@@ -155,38 +156,83 @@ def query(table:TableClient, query:Optional[str]=None, fields:Optional[List[str]
     - less than or equal to (<=): le
     - not equals (<>): ne
 
-    Exmaple:
+    Example:
     mystring eq 'welcome' and mynumber gt 10
     '''
 
     return table.query_entities(query_filter=query, select=fields)
 
 
-def publish(text_path:str, connection_string:str, table_name:str):
-    '''
-    Publish an entry (custom function to demonstrate the process)
-    '''
+# For internal use
+def help():
+    help_text = '''
+    -----NCYD deployment information automation tool-----
 
+    Use case: python table_api.py <command>
+
+    Available commands:
+        - publish <connection string> <table name> <path to text file>:
+            publish an entry to the database by specifying key-value pairs in a text file
+
+        - delete <connection string> <table name> <id> [*OPTIONAL partition key]:
+            delete an entry from the database by specifying the id
+
+        - query
+
+        - get
+    '''
+    return help_text
+
+
+def publish(text_path:str, connection_string:str, table_name:str):
     entry = parse_file(text_path)
     database = connect_to_db(connection_string)
     table = connect_to_table(database, table_name)
     upsert_entry(table, entry)
 
 
+def delete(connection_string:str, table_name:str, id:str, partition_key:Optional[str] = None):
+    database = connect_to_db(connection_string)
+    table = connect_to_table(database, table_name)
+    delete_entry(table, id, partition_key)
+
+
 def run():
     try:
-        text_path = sys.argv[1]
-        connection_string = sys.argv[2]
-        table_name = sys.argv[3]
+        command = sys.argv[1]
     except:
+        raise Exception(help())
+
+    if(command == "help" or command == "--help" or command == "-h"):
+        print(help())
+
+    elif(command == "publish"):
         try:
-            text_path = os.environ["FILE_PATH"]
-            connection_string = os.environ["CONNECTION_STRING"]
-            table_name = os.environ["TABLE_NAME"]
+            connection_string = sys.argv[2]
+            table_name = sys.argv[3]
+            text_path = sys.argv[4]
         except:
-            raise Exception("Use case: python table_api.py <path to text file> <connection string> <table name>, or provide environment variables or .env file with FILE_PATH, CONNECTION_STRING, and TABLE_NAME")
+            raise Exception("\n\n    Use case for publish: python table_api.py publish <connection string> <table name> <path to text file>\n")
     
-    publish(text_path, connection_string, table_name)
+        publish(text_path, connection_string, table_name)
+
+    elif(command == "delete"):
+        try:
+            connection_string = sys.argv[2]
+            table_name = sys.argv[3]
+            id = sys.argv[4]
+            if(len(sys.argv) > 5):
+                partition_key = sys.argv[5]
+            else:
+                partition_key = None
+        except:
+            raise Exception("\n\n    Use case for delete: python table_api.py delete <connection string> <table name> <id> [*OPTIONAL partition key]\n")
+        
+        delete(connection_string, table_name, id, partition_key)
+    
+    else:
+        print(f"'{command}' is not a recognized command, see help:")
+        print(help())
 
 
 
