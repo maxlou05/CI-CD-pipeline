@@ -1,5 +1,6 @@
-from typing import Any, Dict, List, Optional
 from azure.data.tables import TableServiceClient, TableClient
+import json
+from typing import Any, Dict, List, Optional
 import sys
 
 
@@ -107,6 +108,7 @@ def delete_entry(table:TableClient, id:str, partition_key:Optional[str] = None):
 
     if(partition_key is None):
         table.delete_entity(partition_key="pkey", row_key=id)
+        return
     table.delete_entity(partition_key, id)
 
 
@@ -177,31 +179,54 @@ def help():
         - delete <connection string> <table name> <id> [*OPTIONAL partition key]:
             delete an entry from the database by specifying the id
 
-        - query
+        - query <connection string> <table name> [OPTIONS]...
+            query the database using a query string and filters the results for only relevant fields
+            OPTIONS:
+                -q <query string> if not provided, returns all entries (see API documentation for formatting)
+                -f <fields> ... if not provided, returns all available fields
+            *ex: query <connection string> <table name>
+            *ex: query <connection string> <table name> -q query_string -f field1 field2 field3)
 
-        - get
+        - get <connection string> <table name> <id> [*OPTIONAL partition key]
+            returns a specific entry within the database by specifying the id
     '''
     return help_text
 
 
-def publish(text_path:str, connection_string:str, table_name:str):
+def cli_publish(connection_string:str, table_name:str, text_path:str):
     entry = parse_file(text_path)
     database = connect_to_db(connection_string)
     table = connect_to_table(database, table_name)
     upsert_entry(table, entry)
 
 
-def delete(connection_string:str, table_name:str, id:str, partition_key:Optional[str] = None):
+def cli_delete(connection_string:str, table_name:str, id:str, partition_key:Optional[str] = None):
     database = connect_to_db(connection_string)
     table = connect_to_table(database, table_name)
     delete_entry(table, id, partition_key)
+
+
+def cli_query(connection_string:str, table_name:str, query_str:Optional[str]=None, fields:Optional[List[str]]=None):
+    database = connect_to_db(connection_string)
+    table = connect_to_table(database, table_name)
+    if(fields is not None):
+        if(len(fields) == 0):
+            fields = None
+    return list(query(table, query_str, fields))
+
+
+def cli_get(connection_string:str, table_name:str, id:str, partition_key:Optional[str] = None):
+    database = connect_to_db(connection_string)
+    table = connect_to_table(database, table_name)
+    return get_entry(table, id, partition_key)
 
 
 def run():
     try:
         command = sys.argv[1]
     except:
-        raise Exception(help())
+        print(help())
+        sys.exit()
 
     if(command == "help" or command == "--help" or command == "-h"):
         print(help())
@@ -212,9 +237,11 @@ def run():
             table_name = sys.argv[3]
             text_path = sys.argv[4]
         except:
-            raise Exception("\n\n    Use case for publish: python table_api.py publish <connection string> <table name> <path to text file>\n")
+            print("Invalid format")
+            print("Use case for publish: python table_api.py publish <connection string> <table name> <path to text file>")
+            sys.exit()
     
-        publish(text_path, connection_string, table_name)
+        cli_publish(connection_string, table_name, text_path)
 
     elif(command == "delete"):
         try:
@@ -226,10 +253,65 @@ def run():
             else:
                 partition_key = None
         except:
-            raise Exception("\n\n    Use case for delete: python table_api.py delete <connection string> <table name> <id> [*OPTIONAL partition key]\n")
+            print("Invalid format")
+            print("Use case for delete: python table_api.py delete <connection string> <table name> <id> [*OPTIONAL partition key]")
+            sys.exit()
         
-        delete(connection_string, table_name, id, partition_key)
+        cli_delete(connection_string, table_name, id, partition_key)
     
+    elif(command == "query"):
+        try:
+            connection_string = sys.argv[2]
+            table_name = sys.argv[3]
+            query_str = None
+            fields = []
+            if(len(sys.argv) > 4):
+                if(sys.argv[4] == "-q"):
+                    try:
+                        query_str = sys.argv[5]
+                        if(query_str == "-f"):
+                            raise
+                    except:
+                        print("-q requires one argument")
+                        raise
+                    if(len(sys.argv) > 7):
+                        if(sys.argv[6] == "-f"):
+                            fields=[]
+                            for i in range(7, len(sys.argv)):
+                                fields.append(sys.argv[i])
+                elif(sys.argv[4] == "-f"):
+                    if(sys.argv[-2] == "-q"):
+                        stop = len(sys.argv) - 2
+                        query_str = sys.argv[-1]
+                    else:
+                        stop = len(sys.argv)
+                    for i in range(5, stop):
+                        fields.append(sys.argv[i])
+        except:
+            print("Invalid format")
+            print("Use case for query: python table_api.py query <connection string> <table name> [OPTIONS]...")
+            sys.exit()
+        
+        results = cli_query(connection_string, table_name, query_str, fields)
+        print(json.dumps(results, indent=2))
+
+    elif(command == "get"):
+        try:
+            connection_string = sys.argv[2]
+            table_name = sys.argv[3]
+            id = sys.argv[4]
+            if(len(sys.argv) > 5):
+                partition_key = sys.argv[5]
+            else:
+                partition_key = None
+        except:
+            print("Invalid format")
+            print("Use case for get: python table_api.py get <connection string> <table name> <id> [*OPTIONAL partition key]")
+            sys.exit()
+        
+        results = cli_get(connection_string, table_name, id, partition_key)
+        print(json.dumps(results, indent=2))
+
     else:
         print(f"'{command}' is not a recognized command, see help:")
         print(help())
