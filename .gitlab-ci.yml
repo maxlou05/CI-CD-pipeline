@@ -1,6 +1,8 @@
-image: 
- name: docker-registry-remote.artifactory-fpark1.int.net.nokia.com/hashicorp/terraform:1.2.1
- entrypoint: [""]
+default:
+    tags:
+        - epsec-gitlab
+
+image: docker-registry-remote.artifactory-fpark1.int.net.nokia.com/hashicorp/terraform:1.2.1
 
 variables:
  TEXT_FILE: "config_info.txt"
@@ -16,7 +18,7 @@ create-customer-config:
  - echo 'PartitionKey = "ak-cicdpk"' >> "$TEXT_FILE" 
  artifacts:
   paths:
-   - "$TEXT_FILE"
+  - "$TEXT_FILE"
   expire_in: 7 days
 
 publish-to-db:
@@ -30,4 +32,4 @@ publish-to-db:
  - python3 -m ensurepip
  - pip install -r requirements.txt
  script:
-  - python table_api.py "$TEXT_FILE" "$CONN_STR_DB" "$TABLE_NAME"
+ - python table_api.py "$TEXT_FILE" "$CONN_STR_DB" "$TABLE_NAME"
