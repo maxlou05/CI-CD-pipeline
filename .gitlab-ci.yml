@@ -14,22 +14,22 @@ stages:
 create-customer-config:
  stage: create-customer-config
  script:
- - echo 'RowKey = "ak-cicd"' >> "$TEXT_FILE"
- - echo 'PartitionKey = "ak-cicdpk"' >> "$TEXT_FILE" 
+  - echo 'RowKey = "ak-cicd"' >> "$TEXT_FILE"
+  - echo 'PartitionKey = "ak-cicdpk"' >> "$TEXT_FILE" 
  artifacts:
   paths:
-  - "$TEXT_FILE"
+   - "$TEXT_FILE"
   expire_in: 7 days
 
 publish-to-db:
  stage: publish-to-db
  needs: [create-customer-config]
  before_script:
- - apk update
+  - apk update
 # Install python/pip
- - apk add --update --no-cache python3 && ln -sf python3 /usr/bin/python
- - apk add py3-pip
- - python3 -m ensurepip
- - pip install -r requirements.txt
+  - apk add --update --no-cache python3 && ln -sf python3 /usr/bin/python
+  - apk add py3-pip
+  - python3 -m ensurepip
+  - pip install -r requirements.txt
  script:
- - python table_api.py "$TEXT_FILE" "$CONN_STR_DB" "$TABLE_NAME"
+  - python table_api.py "$TEXT_FILE" "$CONN_STR_DB" "$TABLE_NAME"
