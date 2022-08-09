@@ -20,7 +20,7 @@ before_script:
  - apk add --update --no-cache python3 && ln -sf python3 /usr/bin/python
  - apk add py3-pip
  - python3 -m ensurepip
- - pip install azure-data-tables
+ - pip install -r requirements.txt
  
 create-customer-config:
  stage: create-customer-config
@@ -36,12 +36,12 @@ publish-to-db:
  stage: publish-to-db
  needs: [create-customer-config]
  script:
-  - python main.py publish "$TEXT_FILE" "$CONN_STR_DB" "$TABLE_NAME"
+  - python table_api.py publish "$CONN_STR_DB" "$TABLE_NAME" "$TEXT_FILE"
 
 clean-up-db:
  stage: clean-up
  needs: [publish-to-db]
  script:
-  - python main.py delete_entry "$CONN_STR_DB" "$TABLE_NAME" "$ROW_KEY" "$PARTITION_KEY"
+  - python table_api.py delete_entry "$CONN_STR_DB" "$TABLE_NAME" "$ROW_KEY" "$PARTITION_KEY"
  rules:
   - when: manual
