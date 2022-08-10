@@ -1,9 +1,9 @@
 default:
   tags:
     - epsec-gitlab
-        
+
 image: docker-registry-remote.artifactory-fpark1.int.net.nokia.com/hashicorp/terraform:1.2.1
- 
+
 variables:
   DEPLOY_INFO: "deployment_info.txt"
   PARTITION_KEY: "ak-cicdpk"
@@ -13,7 +13,7 @@ stages:
   - create-customer-config
   - publish-to-db
   - clean-up
- 
+
 before_script:
   - apk update
 # Install python/pip
@@ -21,7 +21,7 @@ before_script:
   - apk add py3-pip
   - python3 -m ensurepip
   - pip install -r requirements.txt
- 
+
 create-customer-config:
   stage: create-customer-config
   script:

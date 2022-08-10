@@ -4,6 +4,10 @@ from typing import Any, Dict, List, Optional
 import sys
 
 
+DEFAULT_PARTITION_KEY = "pkey"
+DEFAULT_TABLE_NAME = "ncyd_configuration_info"
+
+
 def parse_file(path):
     '''
     Parse a key-value pair text file into a python dictionary ready to be uploaded to the database
@@ -39,7 +43,7 @@ def parse_file(path):
     
     # Add a partition key if not specified
     if("PartitionKey" not in out.keys()):
-        out["PartitionKey"] = "pkey"
+        out["PartitionKey"] = DEFAULT_PARTITION_KEY
     
     # Add a row key (required and must be unique)
     if("RowKey" not in out.keys()):
@@ -111,7 +115,7 @@ def delete_entry(table:TableClient, id:str, partition_key:Optional[str] = None):
     '''
 
     if(partition_key is None):
-        table.delete_entity(partition_key="pkey", row_key=id)
+        table.delete_entity(partition_key=DEFAULT_PARTITION_KEY, row_key=id)
         return
     table.delete_entity(partition_key, id)
 
@@ -131,7 +135,7 @@ def get_entry(table:TableClient, id:str, partition_key:Optional[str] = None):
 
     try:
         if(partition_key is None):
-            return table.get_entity(partition_key="pkey", row_key=id)
+            return table.get_entity(partition_key=DEFAULT_PARTITION_KEY, row_key=id)
         return table.get_entity(partition_key=partition_key, row_key=id)
     except:
         return None
@@ -180,10 +184,13 @@ def help():
         - publish <connection string> <table name> <path to text file>
             publish an entry to the database by specifying key-value pairs with a unique "id" key in a text file
 
-        - delete <connection string> <table name> <path to text file>
-            delete an entry from the database by specifying key-value pairs with a unique "id" key in a text file
+        - delete <connection string> <table name> [OPTIONS]
+            delete an entry from the database by specifying a unique "id"
+            OPTIONS (one is required):
+                -i <id> delete the entry with specified id
+                -f <path to text file> for more advanced searching, specify the partition key and row key of the entry to be deleted
 
-        - query <connection string> <table name> [OPTIONS]...
+        - query <connection string> [OPTIONS]...
             query the database using a query string and filters the results for only relevant fields
             OPTIONS:
                 -q <query string> if not provided, returns all entries (see API documentation for formatting)
@@ -191,40 +198,52 @@ def help():
             *ex: query <connection string> <table name>
             *ex: query <connection string> <table name> -q query_string -f field1 field2 field3)
 
-        - get <connection string> <table name> <path to text file>
-            returns a specific entry within the database by specifying key-value pairs with a unique "id" key in a text file
+        - get <connection string> <table name> [OPTIONS]
+            returns a specific entry within the database by specifying a unique "id"
+            OPTIONS (one is required):
+                -i <id> get the entry with specified id
+                -f <path to text file> for more advanced searching, specify the partition key and row key of the entry to get
     '''
     return help_text
 
 
-def cli_publish(connection_string:str, table_name:str, text_path:str):
+def cli_publish(connection_string:str, text_path:str):
     entry = parse_file(text_path)
     database = connect_to_db(connection_string)
-    table = connect_to_table(database, table_name)
+    table = connect_to_table(database, DEFAULT_TABLE_NAME)
     upsert_entry(table, entry)
+    print("Successfully published entry with PartitionKey '{}' and RowKey '{}' to database".format(entry["PartitionKey"], entry["RowKey"]))
 
 
-def cli_delete(connection_string:str, table_name:str, text_path:str):
-    keys = parse_file(text_path)
+def cli_delete(connection_string:str, text_path:Optional[str]=None, id:Optional[str]=None):
     database = connect_to_db(connection_string)
-    table = connect_to_table(database, table_name)
-    delete_entry(table, keys["RowKey"], keys["PartitionKey"])
+    table = connect_to_table(database, DEFAULT_TABLE_NAME)
+    if(text_path is not None):
+        keys = parse_file(text_path)
+        delete_entry(table, keys["RowKey"], keys["PartitionKey"])
+        print("Successfully deleted entry with PartitionKey '{}' and RowKey '{}'".format(keys["PartitionKey"], keys["RowKey"]))
+    else:
+        delete_entry(table, id)
+        print("Successfully deleted entry with PartitionKey '{}' and RowKey '{}'".format(DEFAULT_PARTITION_KEY, id))
 
 
-def cli_query(connection_string:str, table_name:str, query_str:Optional[str]=None, fields:Optional[List[str]]=None):
+def cli_query(connection_string:str, query_str:Optional[str]=None, fields:Optional[List[str]]=None):
     database = connect_to_db(connection_string)
-    table = connect_to_table(database, table_name)
+    table = connect_to_table(database, DEFAULT_TABLE_NAME)
     if(fields is not None):
         if(len(fields) == 0):
             fields = None
     return list(query(table, query_str, fields))
 
 
-def cli_get(connection_string:str, table_name:str, text_path:str):
-    keys = parse_file(text_path)
+def cli_get(connection_string:str, text_path:Optional[str]=None, id:Optional[str]=None):
     database = connect_to_db(connection_string)
-    table = connect_to_table(database, table_name)
-    return get_entry(table, keys["RowKey"], keys["PartitionKey"])
+    table = connect_to_table(database, DEFAULT_TABLE_NAME)
+    if(text_path is not None):
+        keys = parse_file(text_path)
+        return get_entry(table, keys["RowKey"], keys["PartitionKey"])
+    else:
+        return get_entry(table, id)
 
 
 def run():
@@ -240,79 +259,89 @@ def run():
     elif(command == "publish"):
         try:
             connection_string = sys.argv[2]
-            table_name = sys.argv[3]
-            text_path = sys.argv[4]
+            text_path = sys.argv[3]
         except:
             print("Invalid format")
-            print("Use case for publish: python table_api.py publish <connection string> <table name> <path to text file>")
-            sys.exit()
+            print("Use case for publish: python table_api.py publish <connection string> <path to text file>")
+            sys.exit("See 'python table_api.py help' for more help documentation")
     
-        cli_publish(connection_string, table_name, text_path)
+        cli_publish(connection_string, text_path)
 
     elif(command == "delete"):
         try:
             connection_string = sys.argv[2]
-            table_name = sys.argv[3]
-            text_path = sys.argv[4]
+            mode = sys.argv[3]
+            value = sys.argv[4]
+            if(mode != "-f" and mode != "-i"):
+                raise
         except:
             print("Invalid format")
-            print("Use case for delete: python table_api.py delete <connection string> <table name> <path to text file>")
-            sys.exit()
+            print("Use case for delete: python table_api.py delete <connection string> [OPTIONS]")
+            sys.exit("See 'python table_api.py' help for more help documentation")
         
-        cli_delete(connection_string, table_name, text_path)
+        if(mode == "-f"):
+            cli_delete(connection_string, text_path=value)
+        elif(mode == "-i"):
+            cli_delete(connection_string, id=value)
     
     elif(command == "query"):
         try:
             connection_string = sys.argv[2]
-            table_name = sys.argv[3]
             query_str = None
             fields = []
-            if(len(sys.argv) > 4):
-                if(sys.argv[4] == "-q"):
+            if(len(sys.argv) > 3):
+                if(sys.argv[3] == "-q"):
                     try:
-                        query_str = sys.argv[5]
+                        query_str = sys.argv[4]
                         if(query_str == "-f"):
                             raise
                     except:
                         print("-q requires one argument")
                         raise
-                    if(len(sys.argv) > 7):
-                        if(sys.argv[6] == "-f"):
+                    if(len(sys.argv) > 6):
+                        if(sys.argv[5] == "-f"):
                             fields=[]
-                            for i in range(7, len(sys.argv)):
+                            for i in range(6, len(sys.argv)):
                                 fields.append(sys.argv[i])
-                elif(sys.argv[4] == "-f"):
+                elif(sys.argv[3] == "-f"):
                     if(sys.argv[-2] == "-q"):
                         stop = len(sys.argv) - 2
                         query_str = sys.argv[-1]
                     else:
                         stop = len(sys.argv)
-                    for i in range(5, stop):
+                    for i in range(4, stop):
                         fields.append(sys.argv[i])
         except:
             print("Invalid format")
             print("Use case for query: python table_api.py query <connection string> <table name> [OPTIONS]...")
-            sys.exit()
+            sys.exit("See 'python table_api.py help' for more help documentation")
         
-        results = cli_query(connection_string, table_name, query_str, fields)
+        results = cli_query(connection_string, query_str, fields)
         print(json.dumps(results, indent=2))
 
     elif(command == "get"):
         try:
             connection_string = sys.argv[2]
-            table_name = sys.argv[3]
-            text_path = sys.argv[4]
+            mode = sys.argv[3]
+            value = sys.argv[4]
+            if(mode != "-f" and mode != "-i"):
+                raise
         except:
             print("Invalid format")
-            print("Use case for get: python table_api.py get <connection string> <table name> <path to text file>")
-            sys.exit()
+            print("Use case for delete: python table_api.py get <connection string> [OPTIONS]")
+            sys.exit("See 'python table_api.py help' for more help documentation")
         
-        results = cli_get(connection_string, table_name, text_path)
+        if(mode == "-f"):
+            results = cli_get(connection_string, text_path=value)
+        elif(mode == "-i"):
+            results = cli_get(connection_string, id=value)
+
         print(json.dumps(results, indent=2))
 
     else:
         print(f"'{command}' is not a recognized command, see help:")
         print(help())
+        sys.exit("Command not found")
 
 
 
