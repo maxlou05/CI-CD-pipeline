@@ -6,6 +6,7 @@ image: docker-registry-remote.artifactory-fpark1.int.net.nokia.com/hashicorp/ter
 
 variables:
   DEPLOY_INFO: "deployment_info.txt"
+# PREFIX: "some_rowkey"
 
 stages:
   - create-customer-config
@@ -23,6 +24,7 @@ before_script:
 create-customer-config:
   stage: create-customer-config
   script:
+# SCRIPT TO CREATE .TXT FILE CONTAINING DEPLOYMENT INFO
     - echo 'RowKey = "ak-cicd"' >> $DEPLOY_INFO
     - echo 'PartitionKey = "ak-cicdpk"' >> $DEPLOY_INFO
   artifacts:
@@ -40,6 +42,9 @@ clean-up-db:
   stage: clean-up
   needs: [create-customer-config, publish-to-db]
   script:
+# COMMAND IF ENTRY SHOULD BE DELETED USING ROWKEY/PARTITIONKEY FROM CONFIG_INFO FILE
     - python table_api.py delete "$CONN_STR_DB" -f "$DEPLOY_INFO"
+# COMMAND IF ENTRY SHOULD BE DELETED USING THE PREFIX PASSED AS ARGUMENT
+#   - python table_api.py delete "$CONN_STR_DB" -i "$PREFIX"
   rules:
     - when: manual
