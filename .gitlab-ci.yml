@@ -6,8 +6,6 @@ image: docker-registry-remote.artifactory-fpark1.int.net.nokia.com/hashicorp/ter
 
 variables:
   DEPLOY_INFO: "deployment_info.txt"
-  PARTITION_KEY: "ak-cicdpk"
-  ROW_KEY: "ak-cicd"
 
 stages:
   - create-customer-config
