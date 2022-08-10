@@ -272,9 +272,9 @@ def run():
         try:
             connection_string = sys.argv[2]
             mode = sys.argv[3]
-            value = sys.argv[4]
             if(mode != "-f" and mode != "-i"):
-                raise
+                raise Exception("No option specifying method of input was given")
+            value = sys.argv[4]
         except:
             print("Invalid format")
             print("Use case for delete: python table_api.py delete <connection string> [OPTIONS]")
@@ -299,8 +299,7 @@ def run():
                         if(query_str == "-f"):
                             raise
                     except:
-                        print("-q requires one argument")
-                        raise
+                        raise Exception("-q requires one argument")
                     if(len(sys.argv) > 6):
                         if(sys.argv[5] == "-f"):
                             fields=[]
@@ -328,12 +327,12 @@ def run():
         try:
             connection_string = sys.argv[2]
             mode = sys.argv[3]
-            value = sys.argv[4]
             if(mode != "-f" and mode != "-i"):
-                raise
+                raise Exception("No option specifying method of input was given")
+            value = sys.argv[4]
         except:
             print("Invalid format")
-            print("Use case for delete: python table_api.py get <connection string> [OPTIONS]")
+            print("Use case for get: python table_api.py get <connection string> [OPTIONS]")
             print("See 'python table_api.py help' for more help documentation")
             sys.tracebacklimit = 0
             raise
