@@ -251,7 +251,6 @@ def run():
         command = sys.argv[1]
     except:
         print(help())
-        sys.exit()
 
     if(command == "help" or command == "--help" or command == "-h"):
         print(help())
@@ -263,7 +262,9 @@ def run():
         except:
             print("Invalid format")
             print("Use case for publish: python table_api.py publish <connection string> <path to text file>")
-            sys.exit("See 'python table_api.py help' for more help documentation")
+            print("See 'python table_api.py help' for more help documentation")
+            sys.tracebacklimit = 0
+            raise
     
         cli_publish(connection_string, text_path)
 
@@ -277,7 +278,9 @@ def run():
         except:
             print("Invalid format")
             print("Use case for delete: python table_api.py delete <connection string> [OPTIONS]")
-            sys.exit("See 'python table_api.py' help for more help documentation")
+            print("See 'python table_api.py help' for more help documentation")
+            sys.tracebacklimit = 0
+            raise
         
         if(mode == "-f"):
             cli_delete(connection_string, text_path=value)
@@ -314,7 +317,9 @@ def run():
         except:
             print("Invalid format")
             print("Use case for query: python table_api.py query <connection string> <table name> [OPTIONS]...")
-            sys.exit("See 'python table_api.py help' for more help documentation")
+            print("See 'python table_api.py help' for more help documentation")
+            sys.tracebacklimit = 0
+            raise
         
         results = cli_query(connection_string, query_str, fields)
         print(json.dumps(results, indent=2))
@@ -329,7 +334,9 @@ def run():
         except:
             print("Invalid format")
             print("Use case for delete: python table_api.py get <connection string> [OPTIONS]")
-            sys.exit("See 'python table_api.py help' for more help documentation")
+            print("See 'python table_api.py help' for more help documentation")
+            sys.tracebacklimit = 0
+            raise
         
         if(mode == "-f"):
             results = cli_get(connection_string, text_path=value)
@@ -341,7 +348,8 @@ def run():
     else:
         print(f"'{command}' is not a recognized command, see help:")
         print(help())
-        sys.exit("Command not found")
+        sys.tracebacklimit = 0
+        raise
 
 
 
