@@ -42,6 +42,6 @@ clean-up-db:
   stage: clean-up
   needs: [publish-to-db]
   script:
-    - python table_api.py delete "$CONN_STR_DB" "$TABLE_NAME" "$DEPLOY_INFO"
+    - python table_api.py delete "$CONN_STR_DB" "$TABLE_NAME" "$ROW_KEY" "$PARTITION_KEY"
   rules:
     - when: manual
