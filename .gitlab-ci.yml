@@ -6,8 +6,6 @@ image: docker-registry-remote.artifactory-fpark1.int.net.nokia.com/hashicorp/ter
  
 variables:
   DEPLOY_INFO: "deployment_info.txt"
-  PARTITION_KEY: "ak-cicdpk"
-  ROW_KEY: "ak-cicd"
 
 stages:
   - create-customer-config
@@ -42,6 +40,6 @@ clean-up-db:
   stage: clean-up
   needs: [publish-to-db]
   script:
-    - python table_api.py cli_delete "$CONN_STR_DB" "$TABLE_NAME" "$ROW_KEY" "$PARTITION_KEY"
+    - python table_api.py cli_delete "$CONN_STR_DB" "$TABLE_NAME" "$DEPLOY_INFO"
   rules:
     - when: manual
