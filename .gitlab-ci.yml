@@ -36,12 +36,12 @@ publish-to-db:
   stage: publish-to-db
   needs: [create-customer-config]
   script:
-    - python table_api.py publish "$CONN_STR_DB" "$TABLE_NAME" "$DEPLOY_INFO"
+    - python table_api.py cli_publish "$CONN_STR_DB" "$TABLE_NAME" "$DEPLOY_INFO"
 
 clean-up-db:
   stage: clean-up
   needs: [publish-to-db]
   script:
-    - python table_api.py delete "$CONN_STR_DB" "$TABLE_NAME" "$ROW_KEY" "$PARTITION_KEY"
+    - python table_api.py cli_delete "$CONN_STR_DB" "$TABLE_NAME" "$ROW_KEY" "$PARTITION_KEY"
   rules:
     - when: manual
