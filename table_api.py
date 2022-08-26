@@ -5,6 +5,8 @@ import sys
 
 
 DEFAULT_PARTITION_KEY = "pkey"
+# For the CLI tool, a default table name is used for simplicity
+# CLI tool is not meant to be used for bulk data or precise functionality, just for quick actions
 DEFAULT_TABLE_NAME = "ncyd_configuration_info"
 
 
@@ -181,10 +183,10 @@ def help():
     Use case: python table_api.py <command>
 
     Available commands:
-        - publish <connection string> <table name> <path to text file>
+        - publish <connection string> <path to text file>
             publish an entry to the database by specifying key-value pairs with a unique "id" key in a text file
 
-        - delete <connection string> <table name> [OPTIONS]
+        - delete <connection string> [OPTIONS]
             delete an entry from the database by specifying a unique "id"
             OPTIONS (one is required):
                 -i <id> delete the entry with specified id
@@ -195,10 +197,10 @@ def help():
             OPTIONS:
                 -q <query string> if not provided, returns all entries (see API documentation for formatting)
                 -f <fields> ... if not provided, returns all available fields
-            *ex: query <connection string> <table name>
-            *ex: query <connection string> <table name> -q query_string -f field1 field2 field3)
+            *ex: query <connection string>
+            *ex: query <connection string> -q query_string -f field1 field2 field3)
 
-        - get <connection string> <table name> [OPTIONS]
+        - get <connection string> [OPTIONS]
             returns a specific entry within the database by specifying a unique "id"
             OPTIONS (one is required):
                 -i <id> get the entry with specified id
@@ -246,14 +248,19 @@ def cli_get(connection_string:str, text_path:Optional[str]=None, id:Optional[str
         return get_entry(table, id)
 
 
+# Unfortunately, need to exit with an error (raise) or else the pipeline still thinks that the step passed
 def run():
     try:
         command = sys.argv[1]
     except:
         print(help())
+        sys.tracebacklimit = 0
+        raise
 
     if(command == "help" or command == "--help" or command == "-h"):
         print(help())
+        sys.tracebacklimit = 0
+        raise
 
     elif(command == "publish"):
         try:
@@ -315,7 +322,7 @@ def run():
                         fields.append(sys.argv[i])
         except:
             print("Invalid format")
-            print("Use case for query: python table_api.py query <connection string> <table name> [OPTIONS]...")
+            print("Use case for query: python table_api.py query <connection string> [OPTIONS]...")
             print("See 'python table_api.py help' for more help documentation")
             sys.tracebacklimit = 0
             raise
